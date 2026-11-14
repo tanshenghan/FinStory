@@ -2,13 +2,13 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ledger_app/data/ledger_store.dart';
-import 'package:ledger_app/main.dart';
-import 'package:ledger_app/models/financial_baseline.dart';
-import 'package:ledger_app/models/financial_position_snapshot.dart';
-import 'package:ledger_app/models/ledger_entry.dart';
-import 'package:ledger_app/models/stock_monthly_snapshot.dart';
-import 'package:ledger_app/screens/ledger_shell.dart';
+import 'package:finstory/data/ledger_store.dart';
+import 'package:finstory/main.dart';
+import 'package:finstory/models/financial_baseline.dart';
+import 'package:finstory/models/financial_position_snapshot.dart';
+import 'package:finstory/models/ledger_entry.dart';
+import 'package:finstory/models/stock_monthly_snapshot.dart';
+import 'package:finstory/screens/ledger_shell.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -67,14 +67,14 @@ void main() {
     expect(find.text('导出'), findsOneWidget);
     expect(find.text('导入'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('版本 1.5.6 更新内容'),
+      find.text('版本 1.5.7 更新内容'),
       200,
       scrollable: find.descendant(
         of: find.byType(ListView),
         matching: find.byType(Scrollable),
       ),
     );
-    expect(find.text('版本 1.5.6 更新内容'), findsOneWidget);
+    expect(find.text('版本 1.5.7 更新内容'), findsOneWidget);
   });
 
   testWidgets('财务报表包含个人三表和净资产变动表', (tester) async {

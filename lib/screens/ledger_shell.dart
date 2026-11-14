@@ -2299,19 +2299,19 @@ class ProfilePage extends StatelessWidget {
     final content = isJson
         ? store.exportBackupJson()
         : store.exportEntriesCsv();
-    final name = '简账-$stamp.${isJson ? 'json' : 'csv'}';
+    final name = 'finstory-$stamp.${isJson ? 'json' : 'csv'}';
     await _exportChannel.invokeMethod<void>('shareFile', {
       'name': name,
       'mimeType': isJson ? 'application/json' : 'text/csv',
       'contentBase64': base64Encode(utf8.encode(content)),
-      'chooserTitle': '导出简账数据',
+      'chooserTitle': '导出 finstory 数据',
     });
   }
 
   Future<void> _importData(BuildContext context) async {
     try {
       const jsonType = XTypeGroup(
-        label: '简账 JSON 备份',
+        label: 'finstory JSON 备份',
         extensions: ['json'],
         mimeTypes: ['application/json'],
       );
@@ -2352,9 +2352,9 @@ class ProfilePage extends StatelessWidget {
       }
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('导入失败，请选择由简账导出的 JSON 文件')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('导入失败，请选择由 finstory 导出的 JSON 文件')),
+        );
       }
     }
   }
@@ -2461,7 +2461,7 @@ class ProfilePage extends StatelessWidget {
               tile(
                 Icons.file_upload_outlined,
                 '导入',
-                subtitle: '从简账 JSON 完整备份恢复',
+                subtitle: '从 finstory JSON 完整备份恢复',
                 onTap: () => _importData(context),
               ),
             ],
@@ -2469,7 +2469,7 @@ class ProfilePage extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         const Text(
-          '关于简账',
+          '关于 finstory',
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 8),
@@ -2484,7 +2484,7 @@ class ProfilePage extends StatelessWidget {
                     Icon(Icons.new_releases_outlined),
                     SizedBox(width: 10),
                     Text(
-                      '版本 1.5.6 更新内容',
+                      '版本 1.5.7 更新内容',
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
@@ -2493,17 +2493,19 @@ class ProfilePage extends StatelessWidget {
                   ],
                 ),
                 SizedBox(height: 14),
-                Text('• “记一笔”新增独立的“投资”类型'),
+                Text('• 应用正式更名为 finstory'),
                 SizedBox(height: 7),
-                Text('• 股票投资不再计入收入、支出或消费预算'),
+                Text('• 定位为记账与个人财务状况统计工具'),
                 SizedBox(height: 7),
-                Text('• 支持“投入”：自由现金转入股票账户'),
+                Text('• 保留原应用 ID、签名和全部本地数据'),
                 SizedBox(height: 7),
-                Text('• 支持“取出”：股票账户资金转回自由现金'),
+                Text('• JSON 与 CSV 导出文件同步使用新名称'),
                 SizedBox(height: 7),
-                Text('• 投入和取出金额自动汇总到股票月度快照'),
+                Text('• GitHub 项目名称同步为 finstory'),
                 Divider(height: 28),
                 Text('历史版本', style: TextStyle(fontWeight: FontWeight.w800)),
+                SizedBox(height: 7),
+                Text('1.5.6 · 独立投资流水及股票投入/取出'),
                 SizedBox(height: 7),
                 Text('1.5.5 · 股票投资划转与月末快照联动'),
                 SizedBox(height: 7),

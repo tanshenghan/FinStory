@@ -550,7 +550,7 @@ class LedgerStore extends ChangeNotifier {
   String exportBackupJson() => const JsonEncoder.withIndent('  ').convert({
     'format': 'jianzhang-backup',
     'schemaVersion': 3,
-    'appVersion': '1.5.6',
+    'appVersion': '1.5.7',
     'exportedAt': DateTime.now().toIso8601String(),
     'monthlyBudget': _monthlyBudget,
     'financialBaseline': _financialBaseline?.toJson(),
@@ -619,7 +619,7 @@ class LedgerStore extends ChangeNotifier {
     final decoded = jsonDecode(source);
     if (decoded is! Map<String, dynamic> ||
         decoded['format'] != 'jianzhang-backup') {
-      throw const FormatException('不是有效的简账 JSON 备份');
+      throw const FormatException('不是有效的 finstory JSON 备份');
     }
     final schemaVersion = (decoded['schemaVersion'] as num?)?.toInt() ?? 0;
     if (schemaVersion < 1 || schemaVersion > 3) {

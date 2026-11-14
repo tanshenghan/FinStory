@@ -1,6 +1,6 @@
 {
-    "name": "ledger_app",
-    "short_name": "ledger_app",
+    "name": "finstory",
+    "short_name": "finstory",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

@@ -23,7 +23,7 @@ class MainActivity : FlutterActivity() {
                 val name = call.argument<String>("name") ?: "jianzhang-backup.json"
                 val mimeType = call.argument<String>("mimeType") ?: "application/octet-stream"
                 val contentBase64 = call.argument<String>("contentBase64") ?: ""
-                val chooserTitle = call.argument<String>("chooserTitle") ?: "导出简账数据"
+                val chooserTitle = call.argument<String>("chooserTitle") ?: "导出 finstory 数据"
                 val exportDir = File(cacheDir, "exports").apply { mkdirs() }
                 val safeName = name.replace(Regex("[^a-zA-Z0-9._\\-\\u4e00-\\u9fff]"), "_")
                 val exportFile = File(exportDir, safeName)

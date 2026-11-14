@@ -1,12 +1,12 @@
-# 简账（Finance Story）
+# finstory
 
 <p align="center">
-  <img src="icon.png" width="128" alt="简账 App 图标">
+  <img src="icon.png" width="128" alt="finstory App 图标">
 </p>
 
-一款面向个人使用、离线优先的 Android 财务管理应用。简账不仅记录日常收支，还把自由现金、股票账户、折旧资产和负债放进同一套持续滚动的个人账本，并生成接近公司财务披露结构的个人财务报表。
+一款面向个人使用、离线优先的 Android 记账与财务状况统计应用。finstory 不仅记录日常收支，还把自由现金、股票账户、折旧资产和负债放进同一套持续滚动的个人账本，并生成接近公司财务披露结构的个人财务报表。
 
-当前版本：`1.5.6+14`
+当前版本：`1.5.7+15`
 
 ## Target
 
@@ -22,7 +22,7 @@
 ### 目标平台
 
 - 主要交付平台：Android APK
-- Android application ID：`com.yohji.ledger_app`
+- Android application ID：`com.yohji.ledger_app`（为保证覆盖升级与数据延续而保留）
 - Android 最低版本：Android 7.0 / API 24
 - 当前 target SDK：API 36
 - 仓库保留 Flutter 自动生成的 iOS、Web、macOS、Windows 和 Linux 工程，但目前未作为正式发布目标维护。
