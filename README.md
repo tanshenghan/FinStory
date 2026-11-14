@@ -8,6 +8,47 @@
 
 当前版本：`1.5.7+15`
 
+## 界面预览与功能说明
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/financial-overview.jpg" width="300" alt="个人财务总览与股票账户">
+      <br><strong>个人财务总览</strong>
+      <br>实时汇总总资产、总负债、净资产、本月综合盈亏、当前自由现金和本月自由现金流；股票账户卡片同步展示持仓市值、账户现金与账户总资产。
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/budget-overview.jpg" width="300" alt="月度收支与预算">
+      <br><strong>月度收支与预算</strong>
+      <br>按月份查看收入、支出和结余，通过进度条掌握常规预算使用情况；旅行、大宗购物等“特别行动”可以单独建立，不挤占基础预算。
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/transaction-ledger.jpg" width="300" alt="全部流水明细">
+      <br><strong>全部流水</strong>
+      <br>按日期集中展示收入、支出和投资流水。股票投入与取出使用独立样式，并与普通消费、收入明确区分，方便追踪每笔资金去向。
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/category-statistics.jpg" width="300" alt="收支分类统计">
+      <br><strong>分类统计</strong>
+      <br>汇总当月收入与支出，通过预算使用环和分类占比条展示消费结构，快速识别主要支出类别及其占比。
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/monthly-trend.jpg" width="300" alt="月度收支趋势">
+      <br><strong>月度趋势</strong>
+      <br>以柱状图对比收入、常规支出和特别行动支出，可切换半年、最近一年、3 年、5 年或全部历史范围观察长期变化。
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/financial-reports.jpg" width="300" alt="个人财务报表">
+      <br><strong>个人财务报表</strong>
+      <br>基于同一套实时账本生成个人利润表、资产负债表、现金流量表和净资产变动表，让个人财务状况具备接近公司披露的结构。
+    </td>
+  </tr>
+</table>
+
 ## Target
 
 ### 产品目标
