@@ -12,42 +12,63 @@
 
 <table>
   <tr>
-    <td width="50%" align="center">
-      <img src="docs/screenshots/financial-overview.jpg" width="300" alt="个人财务总览与股票账户">
-      <br><strong>个人财务总览</strong>
-      <br>实时汇总总资产、总负债、净资产、本月综合盈亏、当前自由现金和本月自由现金流；股票账户卡片同步展示持仓市值、账户现金与账户总资产。
+    <td colspan="2" align="center">
+      <img src="docs/rendered/finstory-1.6.1-01-home.png" width="320" alt="finstory 个人财务总览">
+      <br><strong>个人财务总览与股票账户</strong>
+      <br>实时汇总总资产、总负债、净资产、综合盈亏、自由现金与自由现金流；股票账户展示持仓市值、账户现金、月度盈亏和分红，并可进入统一资产管理。
     </td>
+  </tr>
+  <tr>
     <td width="50%" align="center">
-      <img src="docs/screenshots/budget-overview.jpg" width="300" alt="月度收支与预算">
+      <img src="docs/rendered/finstory-1.6.1-02-budget.png" width="300" alt="月度收支与预算">
       <br><strong>月度收支与预算</strong>
-      <br>按月份查看收入、支出和结余，通过进度条掌握常规预算使用情况；旅行、大宗购物等“特别行动”可以单独建立，不挤占基础预算。
+      <br>按月份查看收入、支出和结余，通过进度条掌握常规预算使用情况；特别行动单独核算，不挤占基础预算，最近记录可直接修改。
     </td>
-  </tr>
-  <tr>
     <td width="50%" align="center">
-      <img src="docs/screenshots/transaction-ledger.jpg" width="300" alt="全部流水明细">
+      <img src="docs/rendered/finstory-1.6.1-03-transactions.png" width="300" alt="全部流水">
       <br><strong>全部流水</strong>
-      <br>按日期集中展示收入、支出和投资流水。股票投入与取出使用独立样式，并与普通消费、收入明确区分，方便追踪每笔资金去向。
-    </td>
-    <td width="50%" align="center">
-      <img src="docs/screenshots/category-statistics.jpg" width="300" alt="收支分类统计">
-      <br><strong>分类统计</strong>
-      <br>汇总当月收入与支出，通过预算使用环和分类占比条展示消费结构，快速识别主要支出类别及其占比。
+      <br>按日期展示收入、支出、股票投入与取出，每日标题同步汇总资金方向；点击记录可修改，左滑可删除。
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <img src="docs/screenshots/monthly-trend.jpg" width="300" alt="月度收支趋势">
-      <br><strong>月度趋势</strong>
-      <br>以柱状图对比收入、常规支出和特别行动支出，可切换半年、最近一年、3 年、5 年或全部历史范围观察长期变化。
+      <img src="docs/rendered/finstory-1.6.1-04-assets.png" width="300" alt="统一资产管理">
+      <br><strong>统一资产管理</strong>
+      <br>统一展示自由现金、股票账户、历史实物资产和折旧资产；逐项查看购买金额、账面价值、累计折旧及残值，并支持修改、出售或报废。
     </td>
     <td width="50%" align="center">
-      <img src="docs/screenshots/financial-reports.jpg" width="300" alt="个人财务报表">
+      <img src="docs/rendered/finstory-1.6.1-05-month-stats.png" width="300" alt="月度统计分析">
+      <br><strong>月统计</strong>
+      <br>资金流向图呈现收入如何流向各类支出与结余；分类环形图支持收入/支出切换，并展示金额、笔数、占比及上月环比。
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/rendered/finstory-1.6.1-06-year-stats.png" width="300" alt="年度与长期趋势">
+      <br><strong>年统计与长期趋势</strong>
+      <br>柱状图对比每月收入、常规支出和特别行动，可切换半年、最近一年、3 年、5 年或从开始至今。
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/rendered/finstory-1.6.1-07-reports.png" width="300" alt="个人财务报表">
       <br><strong>个人财务报表</strong>
-      <br>基于同一套实时账本生成个人利润表、资产负债表、现金流量表和净资产变动表，让个人财务状况具备接近公司披露的结构。
+      <br>基于实时账本生成个人利润表、资产负债表、现金流量表和净资产变动表，使个人财务状况具备接近公司披露的结构。
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/rendered/finstory-1.6.1-08-profile.png" width="300" alt="数据与设置">
+      <br><strong>数据与设置</strong>
+      <br>设置常规预算，导出 JSON 完整备份或 CSV 流水，从 JSON 恢复数据，并查看当前版本与历史更新。
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/rendered/finstory-1.6.1-09-add-entry.png" width="300" alt="新增与编辑记录">
+      <br><strong>新增与编辑记录</strong>
+      <br>支持支出、收入和投资三种类型；可选择分类、资产处理、日期、预算归属和备注，也可使用同一页面修改已有记录。
     </td>
   </tr>
 </table>
+
+> 以上界面由 `finstory 1.6.1` 在手机尺寸下使用演示数据直接渲染，不包含真实个人财务信息。
 
 ## Target
 

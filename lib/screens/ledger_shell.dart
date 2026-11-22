@@ -568,21 +568,27 @@ class _SummaryCard extends StatelessWidget {
         child: Icon(icon, size: 18, color: Colors.white),
       ),
       const SizedBox(width: 9),
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(color: Colors.white60, fontSize: 12),
-          ),
-          Text(
-            '¥${_money.format(value)}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(color: Colors.white60, fontSize: 12),
             ),
-          ),
-        ],
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '¥${_money.format(value)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     ],
   );
@@ -1015,21 +1021,26 @@ class DetailPage extends StatelessWidget {
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
-                                const Spacer(),
-                                Text(
-                                  [
-                                    '支 ¥${_money.format(expense)}',
-                                    '收 ¥${_money.format(income)}',
-                                    if (investmentIn > 0)
-                                      '投 ¥${_money.format(investmentIn)}',
-                                    if (investmentOut > 0)
-                                      '取 ¥${_money.format(investmentOut)}',
-                                  ].join('  '),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .outline,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    [
+                                      '支 ¥${_money.format(expense)}',
+                                      '收 ¥${_money.format(income)}',
+                                      if (investmentIn > 0)
+                                        '投 ¥${_money.format(investmentIn)}',
+                                      if (investmentOut > 0)
+                                        '取 ¥${_money.format(investmentOut)}',
+                                    ].join('  '),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .outline,
+                                    ),
                                   ),
                                 ),
                               ],
