@@ -36,12 +36,23 @@ void main() {
 
     await tester.tap(find.text('统计'));
     await tester.pumpAndSettle();
-    expect(find.text('收支统计'), findsOneWidget);
-    expect(find.text('分类统计'), findsOneWidget);
-    expect(find.text('月度趋势'), findsOneWidget);
+    expect(find.text('统计分析'), findsOneWidget);
+    expect(find.text('月统计'), findsOneWidget);
+    expect(find.text('年统计'), findsOneWidget);
+    expect(find.text('自定义'), findsNothing);
     expect(find.text('财务报表'), findsOneWidget);
+    expect(find.text('收支流向'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('分类占比'),
+      220,
+      scrollable: find.descendant(
+        of: find.byKey(const Key('monthly-stats-dashboard')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.text('分类占比'), findsOneWidget);
 
-    await tester.tap(find.text('月度趋势'));
+    await tester.tap(find.text('年统计'));
     await tester.pumpAndSettle();
     expect(find.text('最近一年'), findsOneWidget);
     expect(find.text('统计范围：最近一年'), findsOneWidget);
@@ -67,14 +78,14 @@ void main() {
     expect(find.text('导出'), findsOneWidget);
     expect(find.text('导入'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('版本 1.5.7 更新内容'),
+      find.text('版本 1.6.1 更新内容'),
       200,
       scrollable: find.descendant(
         of: find.byType(ListView),
         matching: find.byType(Scrollable),
       ),
     );
-    expect(find.text('版本 1.5.7 更新内容'), findsOneWidget);
+    expect(find.text('版本 1.6.1 更新内容'), findsOneWidget);
   });
 
   testWidgets('财务报表包含个人三表和净资产变动表', (tester) async {
@@ -94,6 +105,84 @@ void main() {
     expect(find.text('现金流量表'), findsOneWidget);
     expect(find.text('净资产变动表'), findsOneWidget);
     expect(find.text('个人利润表'), findsOneWidget);
+  });
+
+  testWidgets('分类明细进入对应分类流水并可继续编辑', (tester) async {
+    SharedPreferences.setMockInitialValues({'ledger_entries_v1': '[]'});
+    final store = LedgerStore();
+    await store.load();
+    final now = DateTime.now();
+    await store.add(
+      LedgerEntry(
+        id: 'education-entry',
+        type: EntryType.expense,
+        amount: 120,
+        category: '教育',
+        account: '银行卡',
+        date: now,
+        note: '课程资料',
+      ),
+    );
+    await store.add(
+      LedgerEntry(
+        id: 'food-entry',
+        type: EntryType.expense,
+        amount: 35,
+        category: '餐饮',
+        account: '微信',
+        date: now,
+        note: '午餐',
+      ),
+    );
+
+    await tester.pumpWidget(LedgerApp(store: store));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('统计'));
+    await tester.pumpAndSettle();
+
+    final educationRow = find.byKey(const ValueKey('category-row-教育'));
+    final monthlyScrollable = find.descendant(
+      of: find.byKey(const Key('monthly-stats-dashboard')),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      educationRow,
+      220,
+      scrollable: monthlyScrollable,
+    );
+    await tester.drag(monthlyScrollable, const Offset(0, -120));
+    await tester.pumpAndSettle();
+    await tester.tap(educationRow);
+    await tester.pumpAndSettle();
+
+    expect(find.text('教育支出'), findsOneWidget);
+    expect(find.text('课程资料'), findsOneWidget);
+    expect(find.text('午餐'), findsNothing);
+
+    await tester.tap(find.text('课程资料'));
+    await tester.pumpAndSettle();
+    expect(find.text('编辑记录'), findsOneWidget);
+  });
+
+  testWidgets('支出页最近记录位于特别行动上方', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({'ledger_entries_v1': '[]'});
+    final store = LedgerStore();
+    await store.load();
+    await tester.pumpWidget(LedgerApp(store: store));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('支出'));
+    await tester.pumpAndSettle();
+
+    final labels = tester
+        .widgetList<Text>(find.byType(Text))
+        .map((text) => text.data)
+        .toList();
+    expect(labels.indexOf('最近记录'), lessThan(labels.indexOf('特别行动')));
   });
 
   testWidgets('新增记录后跳转到明细并立即显示', (tester) async {
@@ -123,6 +212,108 @@ void main() {
     );
     expect(find.text('-¥25.50'), findsOneWidget);
     expect(store.entries, hasLength(1));
+  });
+
+  testWidgets('最近记录可以修改金额和类别', (tester) async {
+    SharedPreferences.setMockInitialValues({'ledger_entries_v1': '[]'});
+    final store = LedgerStore();
+    await store.load();
+    await store.add(
+      LedgerEntry(
+        id: 'editable-entry',
+        type: EntryType.expense,
+        amount: 25.5,
+        category: '餐饮',
+        account: '微信',
+        date: DateTime.now(),
+        note: '可编辑记录',
+      ),
+    );
+    await tester.pumpWidget(LedgerApp(store: store));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('支出'));
+    await tester.pumpAndSettle();
+    final editableEntry = find.text('可编辑记录');
+    await tester.scrollUntilVisible(
+      editableEntry,
+      180,
+      scrollable: find.descendant(
+        of: find.byType(CustomScrollView),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.tap(editableEntry);
+    await tester.pumpAndSettle();
+
+    expect(find.text('编辑记录'), findsOneWidget);
+    expect(find.text('保存修改'), findsOneWidget);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('amount-input')))
+          .controller
+          ?.text,
+      '25.50',
+    );
+
+    await tester.enterText(find.byKey(const Key('amount-input')), '42.50');
+    await tester.tap(find.text('交通'));
+    await tester.tap(find.byKey(const Key('save-entry')));
+    await tester.pumpAndSettle();
+
+    expect(store.entries, hasLength(1));
+    expect(store.entries.single.id, 'editable-entry');
+    expect(store.entries.single.amount, 42.5);
+    expect(store.entries.single.category, '交通');
+    expect(store.entries.single.account, '微信');
+    expect(find.text('-¥42.50'), findsOneWidget);
+  });
+
+  testWidgets('统一资产管理可以出售资产并确认处置损益', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({'ledger_entries_v1': '[]'});
+    final store = LedgerStore();
+    await store.load();
+    await store.add(
+      LedgerEntry(
+        id: 'test-asset',
+        type: EntryType.expense,
+        amount: 3600,
+        category: '购物',
+        account: '银行卡',
+        date: DateTime.now(),
+        note: '测试手机',
+        isDepreciable: true,
+        depreciationMonths: 36,
+        residualValue: 600,
+      ),
+    );
+    await tester.pumpWidget(LedgerApp(store: store));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('manage-assets')));
+    await tester.pumpAndSettle();
+    expect(find.text('统一资产管理'), findsOneWidget);
+    expect(find.text('测试手机'), findsOneWidget);
+    expect(find.text('使用中'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('sell-test-asset')));
+    await tester.pumpAndSettle();
+    expect(find.text('出售资产'), findsOneWidget);
+    expect(find.text('处置时账面价值：¥3,600.00'), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('asset-sale-price')), '3000');
+    await tester.tap(find.byKey(const Key('confirm-asset-disposal')));
+    await tester.pumpAndSettle();
+
+    final disposal = store.disposalForAsset('test-asset');
+    expect(disposal, isNotNull);
+    expect(disposal!.amount, 3000);
+    expect(store.disposalGainLossForMonth(DateTime.now()), -600);
+    expect(find.text('已处置'), findsOneWidget);
+    expect(find.textContaining('处置损失 ¥600.00'), findsOneWidget);
   });
 
   testWidgets('投资作为收入支出之外的独立记账类型', (tester) async {
@@ -423,7 +614,7 @@ void main() {
     expect(reloaded.netWorthForMonth(month), 115000);
   });
 
-  test('收入支出实时更新净资产并按月计提折旧', () async {
+  test('折旧资产从购买后的下一个自然月开始计提', () async {
     SharedPreferences.setMockInitialValues({'ledger_entries_v1': '[]'});
     final store = LedgerStore();
     await store.load();
@@ -465,10 +656,12 @@ void main() {
 
     expect(store.cashAndDepositsForMonth(month), 7400);
     expect(store.freeCashFlowForMonth(month), -2600);
-    expect(store.depreciableAssetValueForMonth(month), 3500);
-    expect(store.depreciationExpenseForMonth(month), 100);
-    expect(store.recognizedExpenseForMonth(month), 100);
-    expect(store.netWorthForMonth(month), 10900);
+    expect(store.depreciableAssetValueForMonth(month), 3600);
+    expect(store.depreciationExpenseForMonth(month), 0);
+    expect(store.recognizedExpenseForMonth(month), 0);
+    expect(store.netWorthForMonth(month), 11000);
+    expect(store.depreciableAssetValueForMonth(DateTime(2026, 12)), 3500);
+    expect(store.depreciationExpenseForMonth(DateTime(2026, 12)), 100);
 
     await store.add(
       LedgerEntry(
@@ -482,10 +675,44 @@ void main() {
       ),
     );
     expect(store.depreciableAssetValueForMonth(month), 0);
-    expect(store.disposalGainLossForMonth(month), -500);
+    expect(store.disposalGainLossForMonth(month), -600);
     expect(store.recognizedExpenseForMonth(month), 600);
     expect(store.freeCashFlowForMonth(month), 400);
     expect(store.netWorthForMonth(month), 10400);
+  });
+
+  test('出售当月不计提折旧并按月初账面价值确认损益', () async {
+    SharedPreferences.setMockInitialValues({'ledger_entries_v1': '[]'});
+    final store = LedgerStore();
+    await store.load();
+    final asset = LedgerEntry(
+      id: 'december-sale-asset',
+      type: EntryType.expense,
+      amount: 3600,
+      category: '购物',
+      account: '银行卡',
+      date: DateTime(2026, 11, 3),
+      note: '测试设备',
+      isDepreciable: true,
+      depreciationMonths: 36,
+    );
+    await store.add(asset);
+    await store.add(
+      LedgerEntry(
+        id: 'december-sale',
+        type: EntryType.income,
+        amount: 3000,
+        category: '其他',
+        account: '银行卡',
+        date: DateTime(2026, 12, 10),
+        disposedAssetId: asset.id,
+      ),
+    );
+
+    expect(store.depreciationExpenseForMonth(DateTime(2026, 11)), 0);
+    expect(store.depreciationExpenseForMonth(DateTime(2026, 12)), 0);
+    expect(store.assetBookValueAtDisposal(asset, DateTime(2026, 12, 10)), 3600);
+    expect(store.disposalGainLossForMonth(DateTime(2026, 12)), -600);
   });
 
   test('初始资产只设置一次并跨月累计全部流水', () async {

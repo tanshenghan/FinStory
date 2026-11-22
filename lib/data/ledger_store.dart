@@ -115,6 +115,15 @@ class LedgerStore extends ChangeNotifier {
     await _save();
   }
 
+  Future<void> update(LedgerEntry entry) async {
+    final index = _entries.indexWhere((item) => item.id == entry.id);
+    if (index == -1) return;
+    _entries[index] = entry;
+    _sort();
+    notifyListeners();
+    await _save();
+  }
+
   Future<void> remove(String id) async {
     _entries.removeWhere((entry) => entry.id == id);
     notifyListeners();
@@ -415,16 +424,19 @@ class LedgerStore extends ChangeNotifier {
 
   double assetBookValueAt(LedgerEntry asset, DateTime month) {
     final elapsed =
-        (month.year - asset.date.year) * 12 +
-        month.month -
-        asset.date.month +
-        1;
+        (month.year - asset.date.year) * 12 + month.month - asset.date.month;
     if (elapsed <= 0) return asset.amount;
     final months = elapsed.clamp(0, asset.depreciationMonths);
     return (asset.amount - monthlyDepreciation(asset) * months)
         .clamp(asset.residualValue, asset.amount)
         .toDouble();
   }
+
+  double assetBookValueAtDisposal(LedgerEntry asset, DateTime disposalDate) =>
+      assetBookValueAt(
+        asset,
+        DateTime(disposalDate.year, disposalDate.month - 1),
+      );
 
   double depreciableAssetValueForMonth(DateTime month) =>
       depreciableAssetValueAt(DateTime(month.year, month.month + 1, 0));
@@ -444,10 +456,13 @@ class LedgerStore extends ChangeNotifier {
             (month.year - asset.date.year) * 12 +
             month.month -
             asset.date.month;
-        if (elapsed < 0 || elapsed >= asset.depreciationMonths) return false;
+        if (elapsed <= 0 || elapsed > asset.depreciationMonths) return false;
         final disposal = disposalForAsset(asset.id);
         return disposal == null ||
-            !disposal.date.isBefore(DateTime(month.year, month.month));
+            DateTime(
+              disposal.date.year,
+              disposal.date.month,
+            ).isAfter(DateTime(month.year, month.month));
       })
       .fold(0, (sum, asset) => sum + monthlyDepreciation(asset));
 
@@ -459,7 +474,8 @@ class LedgerStore extends ChangeNotifier {
     )) {
       final asset = assetById(disposal.disposedAssetId);
       if (asset != null) {
-        result += disposal.amount - assetBookValueAt(asset, month);
+        result +=
+            disposal.amount - assetBookValueAtDisposal(asset, disposal.date);
       }
     }
     return result;
@@ -550,7 +566,7 @@ class LedgerStore extends ChangeNotifier {
   String exportBackupJson() => const JsonEncoder.withIndent('  ').convert({
     'format': 'jianzhang-backup',
     'schemaVersion': 3,
-    'appVersion': '1.5.7',
+    'appVersion': '1.6.1',
     'exportedAt': DateTime.now().toIso8601String(),
     'monthlyBudget': _monthlyBudget,
     'financialBaseline': _financialBaseline?.toJson(),

@@ -16,6 +16,24 @@ import '../theme/app_theme.dart';
 final _money = NumberFormat('#,##0.00');
 const _exportChannel = MethodChannel('com.yohji.ledger_app/export');
 
+Future<void> _editEntry(
+  BuildContext context,
+  LedgerStore store,
+  LedgerEntry entry,
+) async {
+  final updated = await Navigator.of(context).push<LedgerEntry>(
+    MaterialPageRoute(
+      builder: (_) => AddEntryPage(store: store, initialEntry: entry),
+    ),
+  );
+  if (updated == null) return;
+  await store.update(updated);
+  if (context.mounted) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('已更新这笔账')));
+  }
+}
+
 class LedgerShell extends StatefulWidget {
   const LedgerShell({super.key, required this.store});
   final LedgerStore store;
@@ -176,12 +194,18 @@ class OverviewPage extends StatelessWidget {
     );
   }
 
+  Future<void> _openAssetManagement(BuildContext context) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => AssetManagementPage(store: store)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final month = DateTime(now.year, now.month);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
       children: [
         const Text(
           '我的财务',
@@ -192,13 +216,14 @@ class OverviewPage extends StatelessWidget {
           '截至 ${DateFormat('yyyy年M月d日').format(now)} · 实时滚动',
           style: TextStyle(color: Theme.of(context).colorScheme.outline),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         _FinancialOverviewCard(
           store: store,
           month: month,
           onEdit: () => _editFinancialPosition(context),
+          onManageAssets: () => _openAssetManagement(context),
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 12),
         Row(
           children: [
             const Expanded(
@@ -217,7 +242,7 @@ class OverviewPage extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         _StockSnapshotCard(store: store, month: month),
       ],
     );
@@ -388,6 +413,41 @@ class SpendingPage extends StatelessWidget {
                 children: [
                   const Expanded(
                     child: Text(
+                      '最近记录',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  TextButton(onPressed: onShowAll, child: const Text('查看全部')),
+                ],
+              ),
+              if (entries.isEmpty)
+                const _EmptyState(message: '这个月还没有记录')
+              else
+                Card(
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < entries.length; i++) ...[
+                        _EntryTile(
+                          entry: entries[i],
+                          actionName: store.specialActionName(
+                            entries[i].specialActionId,
+                          ),
+                          onTap: () => _editEntry(context, store, entries[i]),
+                        ),
+                        if (i != entries.length - 1)
+                          const Divider(height: 1, indent: 72),
+                      ],
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
                       '特别行动',
                       style: TextStyle(
                         fontSize: 18,
@@ -434,40 +494,6 @@ class SpendingPage extends StatelessWidget {
                           ),
                         ),
                         if (index != store.specialActions.length - 1)
-                          const Divider(height: 1, indent: 72),
-                      ],
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 22),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      '最近记录',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  TextButton(onPressed: onShowAll, child: const Text('查看全部')),
-                ],
-              ),
-              if (entries.isEmpty)
-                const _EmptyState(message: '这个月还没有记录')
-              else
-                Card(
-                  child: Column(
-                    children: [
-                      for (var i = 0; i < entries.length; i++) ...[
-                        _EntryTile(
-                          entry: entries[i],
-                          actionName: store.specialActionName(
-                            entries[i].specialActionId,
-                          ),
-                        ),
-                        if (i != entries.length - 1)
                           const Divider(height: 1, indent: 72),
                       ],
                     ],
@@ -567,11 +593,13 @@ class _FinancialOverviewCard extends StatelessWidget {
     required this.store,
     required this.month,
     required this.onEdit,
+    required this.onManageAssets,
   });
 
   final LedgerStore store;
   final DateTime month;
   final VoidCallback onEdit;
+  final VoidCallback onManageAssets;
 
   @override
   Widget build(BuildContext context) {
@@ -607,7 +635,7 @@ class _FinancialOverviewCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -627,7 +655,7 @@ class _FinancialOverviewCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
             Row(
               children: [
                 metric('总资产', totalAssets),
@@ -635,7 +663,7 @@ class _FinancialOverviewCard extends StatelessWidget {
                 metric('总负债', liabilities),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 9),
             Row(
               children: [
                 metric(
@@ -653,7 +681,7 @@ class _FinancialOverviewCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 9),
             Row(
               children: [
                 metric(
@@ -672,12 +700,22 @@ class _FinancialOverviewCard extends StatelessWidget {
               ],
             ),
             if (baseline == null) ...[
-              const SizedBox(height: 14),
+              const SizedBox(height: 8),
               const Text(
                 '请先初始化一次资产。之后每笔收入、支出和折旧都会持续更新，不需要每月重填。',
                 style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ],
+            const SizedBox(height: 9),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const Key('manage-assets'),
+                onPressed: onManageAssets,
+                icon: const Icon(Icons.inventory_2_outlined),
+                label: const Text('统一资产管理'),
+              ),
+            ),
           ],
         ),
       ),
@@ -696,7 +734,7 @@ class _StockSnapshotCard extends StatelessWidget {
     if (snapshot == null) {
       return const Card(
         child: Padding(
-          padding: EdgeInsets.all(22),
+          padding: EdgeInsets.all(14),
           child: Row(
             children: [
               Icon(Icons.candlestick_chart_rounded, size: 32),
@@ -714,7 +752,7 @@ class _StockSnapshotCard extends StatelessWidget {
         : const Color(0xFF2E8B67);
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -724,7 +762,7 @@ class _StockSnapshotCard extends StatelessWidget {
               '¥${_money.format(snapshot.totalAssets)}',
               style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
@@ -838,6 +876,64 @@ class _AllEntriesPageState extends State<AllEntriesPage> {
   );
 }
 
+class CategoryEntriesPage extends StatefulWidget {
+  const CategoryEntriesPage({
+    super.key,
+    required this.store,
+    required this.initialMonth,
+    required this.category,
+    required this.type,
+  });
+
+  final LedgerStore store;
+  final DateTime initialMonth;
+  final String category;
+  final EntryType type;
+
+  @override
+  State<CategoryEntriesPage> createState() => _CategoryEntriesPageState();
+}
+
+class _CategoryEntriesPageState extends State<CategoryEntriesPage> {
+  late DateTime _month;
+
+  @override
+  void initState() {
+    super.initState();
+    _month = DateTime(widget.initialMonth.year, widget.initialMonth.month);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final typeLabel = widget.type == EntryType.expense ? '支出' : '收入';
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          '${widget.category}$typeLabel',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+      ),
+      body: SafeArea(
+        child: AnimatedBuilder(
+          animation: widget.store,
+          builder: (context, _) => DetailPage(
+            store: widget.store,
+            month: _month,
+            onMonthChanged: (delta) => setState(
+              () => _month = DateTime(_month.year, _month.month + delta),
+            ),
+            showHeader: false,
+            entryFilter: (entry) =>
+                entry.type == widget.type &&
+                _statsCategory(entry) == widget.category,
+            emptyMessage: '这个月没有${widget.category}$typeLabel记录',
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class DetailPage extends StatelessWidget {
   const DetailPage({
     super.key,
@@ -845,15 +941,21 @@ class DetailPage extends StatelessWidget {
     required this.month,
     required this.onMonthChanged,
     this.showHeader = true,
+    this.entryFilter,
+    this.emptyMessage = '这个月还没有账目',
   });
   final LedgerStore store;
   final DateTime month;
   final ValueChanged<int> onMonthChanged;
   final bool showHeader;
+  final bool Function(LedgerEntry entry)? entryFilter;
+  final String emptyMessage;
 
   @override
   Widget build(BuildContext context) {
-    final entries = store.forMonth(month);
+    final entries = entryFilter == null
+        ? store.forMonth(month)
+        : store.forMonth(month).where(entryFilter!).toList();
     final grouped = <DateTime, List<LedgerEntry>>{};
     for (final entry in entries) {
       final day = DateTime(entry.date.year, entry.date.month, entry.date.day);
@@ -877,7 +979,7 @@ class DetailPage extends StatelessWidget {
         const SizedBox(height: 12),
         Expanded(
           child: entries.isEmpty
-              ? const _EmptyState(message: '这个月还没有账目')
+              ? _EmptyState(message: emptyMessage)
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
                   itemCount: grouped.length,
@@ -963,6 +1065,11 @@ class DetailPage extends StatelessWidget {
                                           actionName: store.specialActionName(
                                             list[i].specialActionId,
                                           ),
+                                          onTap: () => _editEntry(
+                                            context,
+                                            store,
+                                            list[i],
+                                          ),
                                         ),
                                         if (i != list.length - 1)
                                           const Divider(height: 1, indent: 72),
@@ -983,7 +1090,9 @@ class DetailPage extends StatelessWidget {
   }
 }
 
-enum _StatsView { category, trend, reports }
+enum _StatsView { month, year, reports }
+
+enum _CategoryMode { expense, income }
 
 enum _TrendRange { halfYear, oneYear, threeYears, fiveYears, all }
 
@@ -1021,96 +1130,49 @@ class StatsPage extends StatefulWidget {
 }
 
 class _StatsPageState extends State<StatsPage> {
-  _StatsView _view = _StatsView.category;
+  _StatsView _view = _StatsView.month;
   _TrendRange _trendRange = _TrendRange.oneYear;
 
   @override
   Widget build(BuildContext context) {
-    final expense = widget.store.totalForMonth(widget.month, EntryType.expense);
-    final regularExpense = widget.store.regularExpenseForMonth(widget.month);
-    final income = widget.store.totalForMonth(widget.month, EntryType.income);
-    final categories =
-        widget.store.expenseByCategory(widget.month).entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
     return Column(
       children: [
-        const _PageHeader(title: '收支统计'),
+        const _PageHeader(title: '统计分析'),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: SegmentedButton<_StatsView>(
-            segments: const [
-              ButtonSegment(
-                value: _StatsView.category,
-                icon: Icon(Icons.donut_large_rounded),
-                label: Text('分类统计'),
-              ),
-              ButtonSegment(
-                value: _StatsView.trend,
-                icon: Icon(Icons.show_chart_rounded),
-                label: Text('月度趋势'),
-              ),
-              ButtonSegment(
-                value: _StatsView.reports,
-                icon: Icon(Icons.account_balance_rounded),
-                label: Text('财务报表'),
-              ),
-            ],
-            selected: {_view},
-            showSelectedIcon: false,
-            onSelectionChanged: (value) => setState(() => _view = value.first),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: _MonthPicker(
-            month: widget.month,
-            onChanged: widget.onMonthChanged,
-          ),
-        ),
-        Expanded(
-          child: switch (_view) {
-            _StatsView.category => ListView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
               children: [
-                _IncomeExpenseSummary(income: income, expense: expense),
-                const SizedBox(height: 20),
-                const Text(
-                  '支出分类',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 12),
-                if (categories.isEmpty)
-                  const _EmptyState(message: '暂无统计数据')
-                else
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            height: 170,
-                            child: Center(
-                              child: _DonutChart(
-                                value: regularExpense,
-                                budget: widget.store.monthlyBudget,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          for (final item in categories)
-                            _CategoryBar(
-                              name: item.key,
-                              value: item.value,
-                              maxValue: categories.first.value,
-                              total: expense,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
+                _statsChip(_StatsView.month, '月统计'),
+                const SizedBox(width: 8),
+                _statsChip(_StatsView.year, '年统计'),
+                const SizedBox(width: 8),
+                _statsChip(_StatsView.reports, '财务报表'),
               ],
             ),
-            _StatsView.trend => _MonthlyTrendView(
+          ),
+        ),
+        if (_view == _StatsView.month)
+          _StatsPeriodStrip(
+            month: widget.month,
+            onChanged: widget.onMonthChanged,
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: _MonthPicker(
+              month: widget.month,
+              onChanged: widget.onMonthChanged,
+            ),
+          ),
+        Expanded(
+          child: switch (_view) {
+            _StatsView.month => _MonthlyStatsDashboard(
+              store: widget.store,
+              month: widget.month,
+            ),
+            _StatsView.year => _MonthlyTrendView(
               store: widget.store,
               endMonth: widget.month,
               range: _trendRange,
@@ -1125,6 +1187,750 @@ class _StatsPageState extends State<StatsPage> {
       ],
     );
   }
+
+  Widget _statsChip(_StatsView value, String label) => ChoiceChip(
+    label: Text(label),
+    selected: _view == value,
+    showCheckmark: false,
+    onSelected: (_) => setState(() => _view = value),
+  );
+}
+
+class _StatsPeriodStrip extends StatelessWidget {
+  const _StatsPeriodStrip({required this.month, required this.onChanged});
+
+  final DateTime month;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final current = DateTime(now.year, now.month);
+    final months = List<DateTime>.generate(
+      7,
+      (index) => DateTime(current.year, current.month - index),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 2),
+      child: SizedBox(
+        height: 48,
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          scrollDirection: Axis.horizontal,
+          itemCount: months.length + 1,
+          separatorBuilder: (_, _) => const SizedBox(width: 10),
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return Center(
+                child: Text(
+                  '${month.year}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              );
+            }
+            final item = months[index - 1];
+            final selected =
+                item.year == month.year && item.month == month.month;
+            final previous = DateTime(current.year, current.month - 1);
+            final label =
+                item.year == current.year && item.month == current.month
+                ? '本月'
+                : item.year == previous.year && item.month == previous.month
+                ? '上月'
+                : '${item.month}月';
+            return ChoiceChip(
+              label: Text(label),
+              selected: selected,
+              showCheckmark: false,
+              onSelected: (_) {
+                final delta =
+                    (item.year - month.year) * 12 + item.month - month.month;
+                onChanged(delta);
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+String _statsCategory(LedgerEntry entry) {
+  if (entry.type == EntryType.expense) {
+    if (entry.specialActionId != null) return '特别行动';
+    if (entry.isDepreciable) return '资产购置';
+  }
+  if (entry.type == EntryType.income && entry.disposedAssetId != null) {
+    return '资产处置';
+  }
+  return entry.category;
+}
+
+Map<String, double> _categoryTotals(
+  LedgerStore store,
+  DateTime month,
+  EntryType type,
+) {
+  final result = <String, double>{};
+  for (final entry
+      in store.forMonth(month).where((item) => item.type == type)) {
+    result.update(
+      _statsCategory(entry),
+      (value) => value + entry.amount,
+      ifAbsent: () => entry.amount,
+    );
+  }
+  return result;
+}
+
+Map<String, int> _categoryCounts(
+  LedgerStore store,
+  DateTime month,
+  EntryType type,
+) {
+  final result = <String, int>{};
+  for (final entry
+      in store.forMonth(month).where((item) => item.type == type)) {
+    result.update(
+      _statsCategory(entry),
+      (value) => value + 1,
+      ifAbsent: () => 1,
+    );
+  }
+  return result;
+}
+
+const _statColors = <Color>[
+  Color(0xFF18A7A2),
+  Color(0xFFF29F67),
+  Color(0xFFFFD75E),
+  Color(0xFF73CDB8),
+  Color(0xFF7E57C2),
+  Color(0xFF5577B8),
+  Color(0xFF9AA4A0),
+];
+
+class _MonthlyStatsDashboard extends StatefulWidget {
+  const _MonthlyStatsDashboard({required this.store, required this.month});
+
+  final LedgerStore store;
+  final DateTime month;
+
+  @override
+  State<_MonthlyStatsDashboard> createState() => _MonthlyStatsDashboardState();
+}
+
+class _MonthlyStatsDashboardState extends State<_MonthlyStatsDashboard> {
+  _CategoryMode _mode = _CategoryMode.expense;
+
+  @override
+  Widget build(BuildContext context) {
+    final store = widget.store;
+    final month = widget.month;
+    final income = store.totalForMonth(month, EntryType.income);
+    final expense = store.totalForMonth(month, EntryType.expense);
+    final expenseTotals = _categoryTotals(store, month, EntryType.expense);
+    final type = _mode == _CategoryMode.expense
+        ? EntryType.expense
+        : EntryType.income;
+    final totals = _categoryTotals(store, month, type);
+    final counts = _categoryCounts(store, month, type);
+    final previous = _categoryTotals(
+      store,
+      DateTime(month.year, month.month - 1),
+      type,
+    );
+    final items = totals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final total = items.fold<double>(0, (sum, item) => sum + item.value);
+    final slices = _condenseSlices(items);
+
+    return ListView(
+      key: const Key('monthly-stats-dashboard'),
+      padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        '收支流向',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${month.year}年${month.month}月',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '现金收支口径 · 股票投入和取出不计入',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.outline,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 156,
+                  width: double.infinity,
+                  child: CustomPaint(
+                    painter: _CashFlowPainter(
+                      income: income,
+                      expense: expense,
+                      expenseCategories: _condenseSlices(
+                        expenseTotals.entries.toList()
+                          ..sort((a, b) => b.value.compareTo(a.value)),
+                      ),
+                      textColor: Theme.of(context).colorScheme.onSurface,
+                      mutedColor: Theme.of(context).colorScheme.outline,
+                      fontFamily: DefaultTextStyle.of(context).style.fontFamily,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        '分类占比',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    SegmentedButton<_CategoryMode>(
+                      segments: const [
+                        ButtonSegment(
+                          value: _CategoryMode.expense,
+                          label: Text('支出'),
+                        ),
+                        ButtonSegment(
+                          value: _CategoryMode.income,
+                          label: Text('收入'),
+                        ),
+                      ],
+                      selected: {_mode},
+                      showSelectedIcon: false,
+                      onSelectionChanged: (value) =>
+                          setState(() => _mode = value.first),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (slices.isEmpty)
+                  const _EmptyState(message: '这个月暂无分类数据')
+                else ...[
+                  SizedBox(
+                    height: 150,
+                    child: CustomPaint(
+                      painter: _CategoryDonutPainter(
+                        slices: slices,
+                        total: total,
+                        title: _mode == _CategoryMode.expense ? '总支出' : '总收入',
+                        textColor: Theme.of(context).colorScheme.onSurface,
+                        mutedColor: Theme.of(context).colorScheme.outline,
+                        fontFamily: DefaultTextStyle.of(context)
+                            .style
+                            .fontFamily,
+                      ),
+                      child: const SizedBox.expand(),
+                    ),
+                  ),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 5,
+                    children: [
+                      for (var index = 0; index < slices.length; index++)
+                        _ChartLegend(
+                          color: _statColors[index % _statColors.length],
+                          label: slices[index].label,
+                        ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _mode == _CategoryMode.expense ? '支出明细' : '收入明细',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${items.length}个分类',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                if (items.isEmpty)
+                  const _EmptyState(message: '暂无明细')
+                else
+                  for (var index = 0; index < items.length; index++) ...[
+                    _CategoryDetailRow(
+                      key: ValueKey('category-row-${items[index].key}'),
+                      name: items[index].key,
+                      value: items[index].value,
+                      total: total,
+                      count: counts[items[index].key] ?? 0,
+                      previousValue: previous[items[index].key] ?? 0,
+                      color: _statColors[index % _statColors.length],
+                      onTap: () => Navigator.of(context).push<void>(
+                        MaterialPageRoute(
+                          builder: (_) => CategoryEntriesPage(
+                            store: store,
+                            initialMonth: month,
+                            category: items[index].key,
+                            type: type,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (index != items.length - 1) const Divider(height: 16),
+                  ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<_CategorySlice> _condenseSlices(List<MapEntry<String, double>> items) {
+    if (items.length <= 6) {
+      return items.map((item) => _CategorySlice(item.key, item.value)).toList();
+    }
+    final main = items
+        .take(5)
+        .map((item) => _CategorySlice(item.key, item.value));
+    final other = items
+        .skip(5)
+        .fold<double>(0, (sum, item) => sum + item.value);
+    return [...main, _CategorySlice('其他', other)];
+  }
+}
+
+class _CategorySlice {
+  const _CategorySlice(this.label, this.value);
+
+  final String label;
+  final double value;
+}
+
+class _CategoryDetailRow extends StatelessWidget {
+  const _CategoryDetailRow({
+    super.key,
+    required this.name,
+    required this.value,
+    required this.total,
+    required this.count,
+    required this.previousValue,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String name;
+  final double value;
+  final double total;
+  final int count;
+  final double previousValue;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = total == 0 ? 0.0 : value / total;
+    final delta = value - previousValue;
+    final comparison = previousValue == 0
+        ? '上月无记录'
+        : '环比上月 ${delta >= 0 ? '+' : '-'}¥${_money.format(delta.abs())}  ${(delta / previousValue * 100).abs().toStringAsFixed(1)}%';
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 17,
+                  backgroundColor: color.withValues(alpha: .16),
+                  child: Icon(categoryIcon(name), color: color, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(width: 7),
+                      Flexible(
+                        child: Text(
+                          '$count笔 · ${(ratio * 100).toStringAsFixed(1)}%',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.outline,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '¥${_money.format(value)}',
+                  style: TextStyle(fontWeight: FontWeight.w900, color: color),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.chevron_right_rounded, size: 18),
+              ],
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: ratio.clamp(0, 1),
+                minHeight: 5,
+                color: color,
+                backgroundColor: color.withValues(alpha: .12),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                comparison,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.outline,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryDonutPainter extends CustomPainter {
+  const _CategoryDonutPainter({
+    required this.slices,
+    required this.total,
+    required this.title,
+    required this.textColor,
+    required this.mutedColor,
+    required this.fontFamily,
+  });
+
+  final List<_CategorySlice> slices;
+  final double total;
+  final String title;
+  final Color textColor;
+  final Color mutedColor;
+  final String? fontFamily;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) * .34;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    var start = -math.pi / 2;
+    for (var index = 0; index < slices.length; index++) {
+      final sweep = total == 0
+          ? 0.0
+          : slices[index].value / total * math.pi * 2;
+      final paint = Paint()
+        ..color = _statColors[index % _statColors.length]
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 32
+        ..strokeCap = StrokeCap.butt;
+      canvas.drawArc(
+        rect,
+        start + .018,
+        math.max(0, sweep - .036),
+        false,
+        paint,
+      );
+      start += sweep;
+    }
+    _paintCentered(canvas, title, center.translate(0, -10), mutedColor, 11);
+    _paintCentered(
+      canvas,
+      '¥${_compactStatMoney(total)}',
+      center.translate(0, 10),
+      textColor,
+      16,
+      FontWeight.w800,
+    );
+  }
+
+  void _paintCentered(
+    Canvas canvas,
+    String text,
+    Offset center,
+    Color color,
+    double size, [
+    FontWeight weight = FontWeight.w500,
+  ]) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: color,
+          fontSize: size,
+          fontWeight: weight,
+          fontFamily: fontFamily,
+        ),
+      ),
+      textDirection: ui.TextDirection.ltr,
+    )..layout();
+    painter.paint(
+      canvas,
+      Offset(center.dx - painter.width / 2, center.dy - painter.height / 2),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _CategoryDonutPainter oldDelegate) =>
+      oldDelegate.slices != slices || oldDelegate.total != total;
+}
+
+class _CashFlowPainter extends CustomPainter {
+  const _CashFlowPainter({
+    required this.income,
+    required this.expense,
+    required this.expenseCategories,
+    required this.textColor,
+    required this.mutedColor,
+    required this.fontFamily,
+  });
+
+  final double income;
+  final double expense;
+  final List<_CategorySlice> expenseCategories;
+  final Color textColor;
+  final Color mutedColor;
+  final String? fontFamily;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const green = Color(0xFF42AD98);
+    const red = Color(0xFFF05C63);
+    final balance = income - expense;
+    final sourceTotal = math.max(income, expense);
+    final maxValue = sourceTotal <= 0 ? 1.0 : sourceTotal;
+    const top = 36.0;
+    final usableHeight = size.height - 58;
+    final leftX = size.width * .07;
+    final middleX = size.width * .33;
+    final rightX = size.width * .64;
+    final sourceHeight = usableHeight * .74;
+    final sourceTop = top + (usableHeight - sourceHeight) / 2;
+
+    final sourcePaint = Paint()..color = green;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(leftX, sourceTop, 8, sourceHeight),
+        const Radius.circular(4),
+      ),
+      sourcePaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(middleX, sourceTop, 10, sourceHeight),
+        const Radius.circular(4),
+      ),
+      sourcePaint,
+    );
+    _flowBand(
+      canvas,
+      leftX + 8,
+      middleX,
+      sourceTop,
+      sourceTop,
+      sourceHeight,
+      green.withValues(alpha: .20),
+    );
+
+    final rightSlices = [...expenseCategories];
+    if (balance > 0) rightSlices.add(_CategorySlice('本月结余', balance));
+    if (rightSlices.isEmpty) rightSlices.add(const _CategorySlice('暂无支出', 0));
+    final gap = 7.0;
+    final totalGap = gap * math.max(0, rightSlices.length - 1);
+    final rightScale = (usableHeight - totalGap) / maxValue;
+    var middleCursor = sourceTop;
+    var rightCursor = top;
+    for (var index = 0; index < rightSlices.length; index++) {
+      final slice = rightSlices[index];
+      final value = slice.value;
+      final height = math.max(5.0, value * rightScale);
+      final isBalance = slice.label == '本月结余';
+      final color = isBalance
+          ? green
+          : _statColors[(index + 1) % _statColors.length];
+      final bandHeight = math.max(3.0, sourceHeight * value / maxValue);
+      _flowBand(
+        canvas,
+        middleX + 10,
+        rightX,
+        middleCursor,
+        rightCursor,
+        math.min(bandHeight, height),
+        color.withValues(alpha: .26),
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(rightX, rightCursor, 9, height),
+          const Radius.circular(3),
+        ),
+        Paint()..color = color,
+      );
+      _paintText(
+        canvas,
+        '${slice.label}  ${_compactStatMoney(value)}',
+        Offset(rightX + 14, rightCursor + height / 2 - 7),
+        color,
+        10,
+      );
+      middleCursor += bandHeight;
+      rightCursor += height + gap;
+    }
+
+    if (balance < 0) {
+      _paintText(
+        canvas,
+        '动用存量现金  ¥${_compactStatMoney(-balance)}',
+        Offset(leftX, size.height - 18),
+        red,
+        10,
+        FontWeight.w700,
+      );
+    }
+    _paintText(
+      canvas,
+      '收入\n¥${_compactStatMoney(income)}',
+      Offset(0, 3),
+      green,
+      11,
+      FontWeight.w800,
+    );
+    _paintText(
+      canvas,
+      '可支配资金',
+      Offset(middleX - 25, 3),
+      textColor,
+      11,
+      FontWeight.w800,
+    );
+  }
+
+  void _flowBand(
+    Canvas canvas,
+    double fromX,
+    double toX,
+    double fromY,
+    double toY,
+    double height,
+    Color color,
+  ) {
+    final control = (toX - fromX) * .48;
+    final path = Path()
+      ..moveTo(fromX, fromY)
+      ..cubicTo(fromX + control, fromY, toX - control, toY, toX, toY)
+      ..lineTo(toX, toY + height)
+      ..cubicTo(
+        toX - control,
+        toY + height,
+        fromX + control,
+        fromY + height,
+        fromX,
+        fromY + height,
+      )
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  void _paintText(
+    Canvas canvas,
+    String text,
+    Offset offset,
+    Color color,
+    double size, [
+    FontWeight weight = FontWeight.w500,
+  ]) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: color,
+          fontSize: size,
+          fontWeight: weight,
+          fontFamily: fontFamily,
+        ),
+      ),
+      textDirection: ui.TextDirection.ltr,
+    )..layout(maxWidth: 105);
+    painter.paint(canvas, offset);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CashFlowPainter oldDelegate) =>
+      oldDelegate.income != income ||
+      oldDelegate.expense != expense ||
+      oldDelegate.expenseCategories != expenseCategories;
+}
+
+String _compactStatMoney(double value) {
+  if (value >= 10000) return '${(value / 10000).toStringAsFixed(1)}万';
+  if (value >= 1000) return value.toStringAsFixed(0);
+  return value.toStringAsFixed(2);
 }
 
 class _FinancialReportsView extends StatelessWidget {
@@ -1513,37 +2319,40 @@ class _MonthlyTrendView extends StatelessWidget {
       (index) => regularExpense[index] + specialExpense[index],
     );
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+      padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
       children: [
         Card(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: DropdownButton<_TrendRange>(
-              key: const Key('trend-range'),
-              value: range,
-              isExpanded: true,
-              underline: const SizedBox.shrink(),
-              icon: const Icon(Icons.expand_more_rounded),
-              items: _TrendRange.values
-                  .map(
-                    (item) => DropdownMenuItem(
-                      value: item,
-                      child: Text('统计范围：${item.label}'),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) onRangeChanged(value);
-              },
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: SizedBox(
+              height: 46,
+              child: DropdownButton<_TrendRange>(
+                key: const Key('trend-range'),
+                value: range,
+                isExpanded: true,
+                underline: const SizedBox.shrink(),
+                icon: const Icon(Icons.expand_more_rounded),
+                items: _TrendRange.values
+                    .map(
+                      (item) => DropdownMenuItem(
+                        value: item,
+                        child: Text('统计范围：${item.label}'),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) onRangeChanged(value);
+                },
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         _IncomeExpenseSummary(income: income.last, expense: expense.last),
-        const SizedBox(height: 20),
+        const SizedBox(height: 10),
         Card(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1554,21 +2363,21 @@ class _MonthlyTrendView extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 5),
                 const Wrap(
                   spacing: 18,
-                  runSpacing: 8,
+                  runSpacing: 5,
                   children: [
                     _ChartLegend(color: Color(0xFF4E8B73), label: '收入'),
                     _ChartLegend(color: AppTheme.accent, label: '常规支出'),
                     _ChartLegend(color: Color(0xFF7E57C2), label: '特别行动'),
                   ],
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 8),
                 Semantics(
                   label: '${range.label}收入、常规支出和特别行动柱状图',
                   child: SizedBox(
-                    height: 240,
+                    height: 190,
                     width: double.infinity,
                     child: CustomPaint(
                       painter: _MonthlyBarPainter(
@@ -1578,6 +2387,9 @@ class _MonthlyTrendView extends StatelessWidget {
                         specialExpense: specialExpense,
                         gridColor: Theme.of(context).colorScheme.outlineVariant,
                         labelColor: Theme.of(context).colorScheme.outline,
+                        fontFamily: DefaultTextStyle.of(context)
+                            .style
+                            .fontFamily,
                       ),
                     ),
                   ),
@@ -1635,6 +2447,7 @@ class _MonthlyBarPainter extends CustomPainter {
     required this.specialExpense,
     required this.gridColor,
     required this.labelColor,
+    required this.fontFamily,
   });
   final List<DateTime> months;
   final List<double> income;
@@ -1642,6 +2455,7 @@ class _MonthlyBarPainter extends CustomPainter {
   final List<double> specialExpense;
   final Color gridColor;
   final Color labelColor;
+  final String? fontFamily;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1756,7 +2570,11 @@ class _MonthlyBarPainter extends CustomPainter {
     final painter = TextPainter(
       text: TextSpan(
         text: text,
-        style: TextStyle(color: labelColor, fontSize: 10),
+        style: TextStyle(
+          color: labelColor,
+          fontSize: 10,
+          fontFamily: fontFamily,
+        ),
       ),
       textDirection: ui.TextDirection.ltr,
     )..layout();
@@ -1778,6 +2596,390 @@ class _MonthlyBarPainter extends CustomPainter {
       oldDelegate.specialExpense != specialExpense ||
       oldDelegate.gridColor != gridColor ||
       oldDelegate.labelColor != labelColor;
+}
+
+class AssetManagementPage extends StatelessWidget {
+  const AssetManagementPage({super.key, required this.store});
+
+  final LedgerStore store;
+
+  Future<void> _disposeAsset(
+    BuildContext context,
+    LedgerEntry asset, {
+    required bool writeOff,
+  }) async {
+    var priceText = '';
+    var disposalDate = DateTime.now();
+    final draft = await showDialog<_AssetDisposalDraft>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final bookValue = store.assetBookValueAtDisposal(asset, disposalDate);
+          final price = writeOff ? 0.0 : double.tryParse(priceText.trim()) ?? 0;
+          final gainLoss = price - bookValue;
+          return AlertDialog(
+            title: Text(writeOff ? '报废资产' : '出售资产'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    asset.note.isEmpty ? asset.category : asset.note,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.calendar_today_outlined),
+                    title: const Text('处置日期'),
+                    trailing: TextButton(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          firstDate: asset.date,
+                          lastDate: DateTime(2035),
+                          initialDate: disposalDate.isBefore(asset.date)
+                              ? asset.date
+                              : disposalDate,
+                        );
+                        if (picked != null) {
+                          setDialogState(() => disposalDate = picked);
+                        }
+                      },
+                      child: Text(DateFormat('yyyy年M月d日').format(disposalDate)),
+                    ),
+                  ),
+                  if (!writeOff) ...[
+                    TextField(
+                      key: const Key('asset-sale-price'),
+                      autofocus: true,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      onChanged: (value) =>
+                          setDialogState(() => priceText = value),
+                      decoration: const InputDecoration(
+                        labelText: '实际卖出价格',
+                        prefixText: '¥ ',
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+                  Text('处置时账面价值：¥${_money.format(bookValue)}'),
+                  const SizedBox(height: 6),
+                  Text(
+                    gainLoss >= 0
+                        ? '预计处置收益：¥${_money.format(gainLoss)}'
+                        : '预计处置损失：¥${_money.format(-gainLoss)}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: gainLoss < 0
+                          ? AppTheme.accent
+                          : Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  if (writeOff) ...[
+                    const SizedBox(height: 10),
+                    const Text(
+                      '报废售价按零计算，剩余账面价值将全部确认为处置损失。',
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                key: const Key('confirm-asset-disposal'),
+                onPressed: () {
+                  final parsedPrice = writeOff
+                      ? 0.0
+                      : double.tryParse(priceText.trim());
+                  if (parsedPrice == null || (!writeOff && parsedPrice <= 0)) {
+                    ScaffoldMessenger.of(
+                      dialogContext,
+                    ).showSnackBar(const SnackBar(content: Text('请输入正确的卖出价格')));
+                    return;
+                  }
+                  Navigator.pop(
+                    dialogContext,
+                    _AssetDisposalDraft(date: disposalDate, price: parsedPrice),
+                  );
+                },
+                child: Text(writeOff ? '确认报废' : '确认出售'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (draft == null) return;
+    final assetName = asset.note.isEmpty ? asset.category : asset.note;
+    await store.add(
+      LedgerEntry(
+        id: 'asset-disposal-${DateTime.now().microsecondsSinceEpoch}',
+        type: EntryType.income,
+        amount: draft.price,
+        category: '其他',
+        account: '未设置',
+        date: draft.date,
+        note: writeOff ? '$assetName · 报废' : '$assetName · 出售',
+        disposedAssetId: asset.id,
+      ),
+    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(writeOff ? '资产已报废' : '资产已出售')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text(
+        '统一资产管理',
+        style: TextStyle(fontWeight: FontWeight.w800),
+      ),
+      centerTitle: true,
+    ),
+    body: AnimatedBuilder(
+      animation: store,
+      builder: (context, _) {
+        final now = DateTime.now();
+        final assets = store.depreciableAssets
+          ..sort((a, b) => b.date.compareTo(a.date));
+        final active = assets
+            .where((asset) => store.disposalForAsset(asset.id) == null)
+            .toList();
+        final disposed = assets
+            .where((asset) => store.disposalForAsset(asset.id) != null)
+            .toList();
+        final baseline = store.financialBaseline;
+        final totalAssets = store.totalAssetsAt(now);
+        final freeCash = store.cashAndDepositsAt(now);
+        final stockAssets = store.stockAccountAssetsAt(now);
+        final otherAssets = baseline?.receivablesAndOtherAssets ?? 0;
+        final activeBookValue = active.fold<double>(
+          0,
+          (sum, asset) => sum + store.assetBookValueAt(asset, now),
+        );
+
+        Widget assetCard(LedgerEntry asset) {
+          final disposal = store.disposalForAsset(asset.id);
+          final asOf = disposal?.date ?? now;
+          final bookValue = disposal == null
+              ? store.assetBookValueAt(asset, asOf)
+              : store.assetBookValueAtDisposal(asset, disposal.date);
+          final accumulatedDepreciation = asset.amount - bookValue;
+          final gainLoss = disposal == null
+              ? null
+              : disposal.amount - bookValue;
+          final name = asset.note.isEmpty ? asset.category : asset.note;
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        child: Icon(categoryIcon(asset.category), size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name,
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              '${asset.category} · ${DateFormat('yyyy年M月d日').format(asset.date)}购买',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.outline,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Chip(label: Text(disposal == null ? '使用中' : '已处置')),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _MiniValue(label: '购买金额', value: asset.amount),
+                      ),
+                      Expanded(
+                        child: _MiniValue(label: '账面价值', value: bookValue),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '累计折旧 ¥${_money.format(accumulatedDepreciation)} · 预计残值 ¥${_money.format(asset.residualValue)} · ${asset.depreciationMonths}个月',
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  if (disposal != null && gainLoss != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      '实际处置金额 ¥${_money.format(disposal.amount)} · ${gainLoss >= 0 ? '处置收益' : '处置损失'} ¥${_money.format(gainLoss.abs())}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: gainLoss < 0
+                            ? AppTheme.accent
+                            : Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                  const Divider(height: 24),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _editEntry(context, store, asset),
+                        icon: const Icon(Icons.edit_outlined),
+                        label: const Text('修改资产'),
+                      ),
+                      if (disposal == null) ...[
+                        FilledButton.tonalIcon(
+                          key: ValueKey('sell-${asset.id}'),
+                          onPressed: () =>
+                              _disposeAsset(context, asset, writeOff: false),
+                          icon: const Icon(Icons.sell_outlined),
+                          label: const Text('出售'),
+                        ),
+                        TextButton.icon(
+                          onPressed: () =>
+                              _disposeAsset(context, asset, writeOff: true),
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          label: const Text('报废'),
+                        ),
+                      ] else
+                        TextButton.icon(
+                          onPressed: () => _editEntry(context, store, disposal),
+                          icon: const Icon(Icons.receipt_long_outlined),
+                          label: const Text('修改处置记录'),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return ListView(
+          key: const Key('asset-management-list'),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          children: [
+            Card(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '资产总览',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _MiniValue(label: '当前总资产', value: totalAssets),
+                    const Divider(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _MiniValue(label: '自由现金', value: freeCash),
+                        ),
+                        Expanded(
+                          child: _MiniValue(label: '股票账户', value: stockAssets),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _MiniValue(
+                            label: '自动折旧资产',
+                            value: activeBookValue,
+                          ),
+                        ),
+                        Expanded(
+                          child: _MiniValue(
+                            label: '历史实物资产',
+                            value: baseline?.physicalAssets ?? 0,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (otherAssets > 0) ...[
+                      const SizedBox(height: 12),
+                      _MiniValue(label: '应收及其他资产', value: otherAssets),
+                    ],
+                    const SizedBox(height: 12),
+                    Text(
+                      '持有期间只按折旧公式计算账面价值，不设置市场估值。出售或报废时才根据实际处置金额确认收益或损失。',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 22),
+            const Text(
+              '使用中的资产',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            if (active.isEmpty)
+              const _EmptyState(message: '还没有折旧资产，记支出时可选择“计入折旧资产”')
+            else
+              ...active.map(assetCard),
+            if (disposed.isNotEmpty) ...[
+              const SizedBox(height: 22),
+              const Text(
+                '已处置资产',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              ...disposed.map(assetCard),
+            ],
+          ],
+        );
+      },
+    ),
+  );
+}
+
+class _AssetDisposalDraft {
+  const _AssetDisposalDraft({required this.date, required this.price});
+
+  final DateTime date;
+  final double price;
 }
 
 class FinancialPositionPage extends StatefulWidget {
@@ -2484,7 +3686,7 @@ class ProfilePage extends StatelessWidget {
                     Icon(Icons.new_releases_outlined),
                     SizedBox(width: 10),
                     Text(
-                      '版本 1.5.7 更新内容',
+                      '版本 1.6.1 更新内容',
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
@@ -2493,17 +3695,23 @@ class ProfilePage extends StatelessWidget {
                   ],
                 ),
                 SizedBox(height: 14),
-                Text('• 应用正式更名为 finstory'),
+                Text('• 收窄资金流向图主体，为右侧分类文字留出空间'),
                 SizedBox(height: 7),
-                Text('• 定位为记账与个人财务状况统计工具'),
+                Text('• 缩小分类环形图中心的总金额文字'),
                 SizedBox(height: 7),
-                Text('• 保留原应用 ID、签名和全部本地数据'),
+                Text('• 分类明细可进入对应分类的独立流水页面'),
                 SizedBox(height: 7),
-                Text('• JSON 与 CSV 导出文件同步使用新名称'),
-                SizedBox(height: 7),
-                Text('• GitHub 项目名称同步为 finstory'),
+                Text('• 分类行改为紧凑单行标题，单屏显示更多分类'),
                 Divider(height: 28),
                 Text('历史版本', style: TextStyle(fontWeight: FontWeight.w800)),
+                SizedBox(height: 7),
+                Text('1.6.0 · 紧凑统计布局、移除自定义入口与一屏优化'),
+                SizedBox(height: 7),
+                Text('1.5.9 · 月度资金流向、分类环形图与分类环比明细'),
+                SizedBox(height: 7),
+                Text('1.5.8 · 流水编辑、统一资产管理、折旧规则与新图标'),
+                SizedBox(height: 7),
+                Text('1.5.7 · 应用更名为 finstory，更新产品定位与导出名称'),
                 SizedBox(height: 7),
                 Text('1.5.6 · 独立投资流水及股票投入/取出'),
                 SizedBox(height: 7),
@@ -2532,8 +3740,9 @@ class ProfilePage extends StatelessWidget {
 }
 
 class AddEntryPage extends StatefulWidget {
-  const AddEntryPage({super.key, required this.store});
+  const AddEntryPage({super.key, required this.store, this.initialEntry});
   final LedgerStore store;
+  final LedgerEntry? initialEntry;
   @override
   State<AddEntryPage> createState() => _AddEntryPageState();
 }
@@ -2553,6 +3762,29 @@ class _AddEntryPageState extends State<AddEntryPage> {
   final _residualValue = TextEditingController();
 
   bool get _isStockInvestment => _type == EntryType.investment;
+  bool get _isEditing => widget.initialEntry != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final entry = widget.initialEntry;
+    if (entry == null) return;
+    _type = entry.type;
+    _category = entry.category;
+    _specialActionId = entry.specialActionId;
+    _isDepreciable = entry.isDepreciable;
+    _depreciationMonths = entry.depreciationMonths;
+    _isAssetSale = entry.disposedAssetId != null;
+    _disposedAssetId = entry.disposedAssetId;
+    _investmentDirection =
+        entry.investmentDirection ?? InvestmentDirection.deposit;
+    _date = entry.date;
+    _amount.text = entry.amount.toStringAsFixed(2);
+    _note.text = entry.note;
+    _residualValue.text = entry.residualValue == 0
+        ? ''
+        : entry.residualValue.toStringAsFixed(2);
+  }
 
   @override
   void dispose() {
@@ -2606,9 +3838,16 @@ class _AddEntryPageState extends State<AddEntryPage> {
     }
     if (_isStockInvestment &&
         _investmentDirection == InvestmentDirection.withdraw) {
-      final available = widget.store.stockAccountAssetsAt(
-        DateTime(_date.year, _date.month, _date.day, 23, 59, 59),
-      );
+      final asOf = DateTime(_date.year, _date.month, _date.day, 23, 59, 59);
+      var available = widget.store.stockAccountAssetsAt(asOf);
+      final original = widget.initialEntry;
+      if (original != null &&
+          original.type == EntryType.investment &&
+          !original.date.isAfter(asOf)) {
+        available -= original.isStockDeposit
+            ? original.amount
+            : -original.amount;
+      }
       if (amount > available) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -2621,11 +3860,13 @@ class _AddEntryPageState extends State<AddEntryPage> {
     Navigator.pop(
       context,
       LedgerEntry(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        id:
+            widget.initialEntry?.id ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         type: _type,
         amount: amount,
         category: _category,
-        account: '未设置',
+        account: widget.initialEntry?.account ?? '未设置',
         date: _date,
         note: _note.text.trim(),
         specialActionId: _type == EntryType.expense && !_isStockInvestment
@@ -2650,9 +3891,18 @@ class _AddEntryPageState extends State<AddEntryPage> {
       EntryType.income => incomeCategories,
       EntryType.investment => const <String>['股票投资'],
     };
+    final disposalAssets = widget.store.activeDepreciableAssets(_date).toList();
+    final selectedDisposalAsset = widget.store.assetById(_disposedAssetId);
+    if (selectedDisposalAsset != null &&
+        !disposalAssets.any((asset) => asset.id == selectedDisposalAsset.id)) {
+      disposalAssets.add(selectedDisposalAsset);
+    }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('记一笔', style: TextStyle(fontWeight: FontWeight.w800)),
+        title: Text(
+          _isEditing ? '编辑记录' : '记一笔',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -2920,8 +4170,7 @@ class _AddEntryPageState extends State<AddEntryPage> {
                     prefixIcon: Icon(Icons.inventory_2_outlined),
                     helperText: '售价高于账面价值为处置收益，低于账面价值为处置损失',
                   ),
-                  items: widget.store
-                      .activeDepreciableAssets(_date)
+                  items: disposalAssets
                       .map(
                         (asset) => DropdownMenuItem(
                           value: asset.id,
@@ -2982,9 +4231,9 @@ class _AddEntryPageState extends State<AddEntryPage> {
             child: FilledButton(
               key: const Key('save-entry'),
               onPressed: _save,
-              child: const Text(
-                '保存这笔账',
-                style: TextStyle(fontWeight: FontWeight.w800),
+              child: Text(
+                _isEditing ? '保存修改' : '保存这笔账',
+                style: const TextStyle(fontWeight: FontWeight.w800),
               ),
             ),
           ),
@@ -3000,13 +4249,13 @@ class _PageHeader extends StatelessWidget {
   final Widget? action;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 22, 12, 18),
+    padding: const EdgeInsets.fromLTRB(20, 14, 12, 10),
     child: Row(
       children: [
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
           ),
         ),
         ?action,
@@ -3040,15 +4289,17 @@ class _MonthPicker extends StatelessWidget {
 }
 
 class _EntryTile extends StatelessWidget {
-  const _EntryTile({required this.entry, this.actionName});
+  const _EntryTile({required this.entry, this.actionName, this.onTap});
   final LedgerEntry entry;
   final String? actionName;
+  final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) {
     final income = entry.type == EntryType.income;
     final investment = entry.type == EntryType.investment;
     final investmentColor = const Color(0xFF5577B8);
     return ListTile(
+      onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
       leading: CircleAvatar(
         backgroundColor: actionName != null
@@ -3085,16 +4336,29 @@ class _EntryTile extends StatelessWidget {
           if (entry.disposedAssetId != null) '出售资产',
         ].join(' · '),
       ),
-      trailing: Text(
-        '${entry.isStockWithdrawal || income ? '+' : '-'}¥${_money.format(entry.amount)}',
-        style: TextStyle(
-          fontWeight: FontWeight.w800,
-          color: investment
-              ? investmentColor
-              : income
-              ? const Color(0xFF4E8B73)
-              : Theme.of(context).colorScheme.onSurface,
-        ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '${entry.isStockWithdrawal || income ? '+' : '-'}¥${_money.format(entry.amount)}',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: investment
+                  ? investmentColor
+                  : income
+                  ? const Color(0xFF4E8B73)
+                  : Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          if (onTap != null) ...[
+            const SizedBox(width: 8),
+            Icon(
+              Icons.edit_outlined,
+              size: 17,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -3112,7 +4376,7 @@ class _StatBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Card(
     child: Padding(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -3130,128 +4394,13 @@ class _StatBox extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 5),
           Text(
             '¥${_money.format(value)}',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
           ),
         ],
       ),
-    ),
-  );
-}
-
-class _DonutChart extends StatelessWidget {
-  const _DonutChart({required this.value, required this.budget});
-  final double value;
-  final double budget;
-  @override
-  Widget build(BuildContext context) {
-    final ratio = budget == 0 ? 0.0 : (value / budget).clamp(0.0, 1.0);
-    return SizedBox(
-      width: 150,
-      height: 150,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          SizedBox.expand(
-            child: CircularProgressIndicator(
-              value: ratio,
-              strokeWidth: 15,
-              strokeCap: StrokeCap.round,
-              backgroundColor: Theme.of(context)
-                  .colorScheme
-                  .surfaceContainerHighest,
-              color: AppTheme.accent,
-            ),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '${(ratio * 100).round()}%',
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const Text('预算使用', style: TextStyle(color: Colors.grey)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CategoryBar extends StatelessWidget {
-  const _CategoryBar({
-    required this.name,
-    required this.value,
-    required this.maxValue,
-    required this.total,
-  });
-  final String name;
-  final double value;
-  final double maxValue;
-  final double total;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 9),
-    child: Row(
-      children: [
-        CircleAvatar(
-          radius: 18,
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          child: Icon(
-            categoryIcon(name),
-            size: 17,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
-        const SizedBox(width: 10),
-        SizedBox(
-          width: 38,
-          child: Text(
-            name,
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: maxValue == 0 ? 0 : value / maxValue,
-              minHeight: 8,
-              backgroundColor: Theme.of(context)
-                  .colorScheme
-                  .surfaceContainerHighest,
-              color: AppTheme.accent,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        SizedBox(
-          width: 68,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '¥${_money.format(value)}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-              ),
-              Text(
-                '${total == 0 ? 0 : (value / total * 100).round()}%',
-                style: const TextStyle(color: Colors.grey, fontSize: 11),
-              ),
-            ],
-          ),
-        ),
-      ],
     ),
   );
 }
